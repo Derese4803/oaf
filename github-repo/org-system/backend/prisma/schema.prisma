@@ -1,0 +1,160 @@
+// Prisma schema for the Organization Management System
+// Default provider is SQLite so the project runs immediately with no setup.
+// To switch to Postgres/Neon: change provider below to "postgresql" and
+// set DATABASE_URL in .env to your Neon connection string.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  DEPT_ADMIN
+  MANAGER
+  FIELD_MANAGER
+  SUPERVISOR
+  ENUMERATOR
+}
+
+enum ReportStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum LetterStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  SIGNED
+  SENT
+  ARCHIVED
+}
+
+enum AttendanceEvent {
+  CLOCK_IN
+  CLOCK_OUT
+  BREAK_START
+  BREAK_END
+}
+
+model Department {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  users     User[]
+  teams     Team[]
+  letters   Letter[]
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  employeeId   String   @unique
+  fullName     String
+  username     String   @unique
+  passwordHash String
+  role         Role
+  position     String?
+  phone        String?
+  email        String?
+  status       String   @default("ACTIVE") // ACTIVE / INACTIVE
+  departmentId Int?
+  supervisorId Int?     // for enumerator -> supervisor, supervisor -> field manager, etc.
+  createdAt    DateTime @default(now())
+
+  department       Department?    @relation(fields: [departmentId], references: [id])
+  supervisor       User?          @relation("Hierarchy", fields: [supervisorId], references: [id])
+  subordinates     User[]         @relation("Hierarchy")
+
+  teamMemberships  TeamMember[]
+  reportsSubmitted Report[]       @relation("ReportSubmitter")
+  reportsReviewed  Report[]       @relation("ReportReviewer")
+  attendance       AttendanceLog[]
+  lettersCreated   Letter[]       @relation("LetterCreator")
+  notifications    Notification[]
+}
+
+model Team {
+  id           Int      @id @default(autoincrement())
+  name         String
+  departmentId Int
+  createdAt    DateTime @default(now())
+
+  department Department   @relation(fields: [departmentId], references: [id])
+  members    TeamMember[]
+  reports    Report[]
+}
+
+model TeamMember {
+  id     Int  @id @default(autoincrement())
+  teamId Int
+  userId Int
+
+  team Team @relation(fields: [teamId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([teamId, userId])
+}
+
+model Report {
+  id          Int          @id @default(autoincrement())
+  title       String
+  description String?
+  status      ReportStatus @default(SUBMITTED)
+  teamId      Int?
+  submittedBy Int
+  reviewedBy  Int?
+  reviewNote  String?
+  attachments String?      // comma-separated file names/urls (placeholder)
+  latitude    Float?
+  longitude   Float?
+  createdAt   DateTime     @default(now())
+  reviewedAt  DateTime?
+
+  team     Team? @relation(fields: [teamId], references: [id])
+  submitter User @relation("ReportSubmitter", fields: [submittedBy], references: [id])
+  reviewer  User? @relation("ReportReviewer", fields: [reviewedBy], references: [id])
+}
+
+model AttendanceLog {
+  id        Int             @id @default(autoincrement())
+  userId    Int
+  event     AttendanceEvent
+  timestamp DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Letter {
+  id           Int          @id @default(autoincrement())
+  referenceNo  String       @unique
+  subject      String
+  body         String
+  direction    String       // INCOMING / OUTGOING
+  status       LetterStatus @default(DRAFT)
+  departmentId Int?
+  createdBy    Int
+  ccList       String?      // comma-separated names/emails
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  department Department? @relation(fields: [departmentId], references: [id])
+  creator    User        @relation("LetterCreator", fields: [createdBy], references: [id])
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  type      String   // COFFEE_TIME, HAPPY_FRIDAY, LATE_ARRIVAL, APPROVAL, NEW_ASSIGNMENT, SYSTEM
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
