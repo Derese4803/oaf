@@ -7,6 +7,8 @@ import Navbar from "@/components/Navbar";
 import { api } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 
+export const dynamic = 'force-dynamic';
+
 export default function DepartmentsPage() {
   const [departments, setDepartments] = useState([]);
   const [name, setName] = useState("");

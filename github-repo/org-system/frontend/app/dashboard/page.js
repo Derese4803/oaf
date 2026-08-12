@@ -16,6 +16,8 @@ import {
   CartesianGrid,
 } from "recharts";
 
+export const dynamic = 'force-dynamic';
+
 // Default Mock Stats for Dev Mode / Offline Fallback
 const MOCK_STATS = {
   totalStaff: 42,

@@ -7,6 +7,8 @@ import Navbar from "@/components/Navbar";
 import { api } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 
+export const dynamic = 'force-dynamic';
+
 const STATUS_STYLES = {
   SUBMITTED: "bg-amber-500/15 text-amber-600",
   APPROVED: "bg-forest-700/10 text-forest-700",

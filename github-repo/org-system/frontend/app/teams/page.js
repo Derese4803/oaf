@@ -6,6 +6,8 @@ import Sidebar from "@/components/Sidebar";
 import Navbar from "@/components/Navbar";
 import { api } from "@/lib/api";
 
+export const dynamic = 'force-dynamic';
+
 export default function TeamsPage() {
   const [teams, setTeams] = useState([]);
   const [departments, setDepartments] = useState([]);

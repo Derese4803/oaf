@@ -6,6 +6,8 @@ import Sidebar from "@/components/Sidebar";
 import Navbar from "@/components/Navbar";
 import { api } from "@/lib/api";
 
+export const dynamic = 'force-dynamic';
+
 const STATUS_FLOW = ["DRAFT", "PENDING_APPROVAL", "APPROVED", "SIGNED", "SENT", "ARCHIVED"];
 
 export default function LettersPage() {

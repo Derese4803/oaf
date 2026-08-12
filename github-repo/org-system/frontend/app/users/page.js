@@ -7,6 +7,8 @@ import Navbar from "@/components/Navbar";
 import { api } from "@/lib/api";
 import { ROLE_LABELS } from "@/lib/auth";
 
+export const dynamic = 'force-dynamic';
+
 const ROLES = Object.keys(ROLE_LABELS);
 
 export default function UsersPage() {

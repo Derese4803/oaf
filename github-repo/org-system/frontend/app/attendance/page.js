@@ -6,6 +6,8 @@ import Sidebar from "@/components/Sidebar";
 import Navbar from "@/components/Navbar";
 import { api } from "@/lib/api";
 
+export const dynamic = 'force-dynamic';
+
 const EVENT_LABELS = {
   CLOCK_IN: "Clocked in",
   CLOCK_OUT: "Clocked out",
