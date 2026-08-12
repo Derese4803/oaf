@@ -6,21 +6,28 @@ import Sidebar from "@/components/Sidebar";
 import Navbar from "@/components/Navbar";
 import { api } from "@/lib/api";
 
-export const dynamic = 'force-dynamic';
-
 export default function TeamsPage() {
   const [teams, setTeams] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [name, setName] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [error, setError] = useState("");
+  const [isMounted, setIsMounted] = useState(false);
 
   function load() {
     api.getTeams().then(setTeams).catch((e) => setError(e.message));
     api.getDepartments().then(setDepartments).catch(() => {});
   }
 
-  useEffect(load, []);
+  useEffect(() => {
+    setIsMounted(true);
+    load();
+  }, []);
+
+  // Prevent client auth and route rendering on the server during static build
+  if (!isMounted) {
+    return null;
+  }
 
   async function handleAdd(e) {
     e.preventDefault();
@@ -59,7 +66,9 @@ export default function TeamsPage() {
               >
                 <option value="">Department…</option>
                 {departments.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
                 ))}
               </select>
               <button className="px-4 py-2 rounded-md bg-forest-800 text-wheat-50 hover:bg-forest-700 focus-ring">
@@ -69,20 +78,36 @@ export default function TeamsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {teams.map((t) => (
-                <div key={t.id} className="bg-white rounded-xl border border-forest-800/10 p-5">
-                  <h3 className="font-display text-lg text-forest-950">{t.name}</h3>
-                  <p className="text-xs text-slate-600 mt-1">{t.department?.name} · {t._count?.reports ?? 0} reports</p>
+                <div
+                  key={t.id}
+                  className="bg-white rounded-xl border border-forest-800/10 p-5"
+                >
+                  <h3 className="font-display text-lg text-forest-950">
+                    {t.name}
+                  </h3>
+                  <p className="text-xs text-slate-600 mt-1">
+                    {t.department?.name} · {t._count?.reports ?? 0} reports
+                  </p>
                   <ul className="mt-3 space-y-1">
-                    {t.members.map((m) => (
-                      <li key={m.user.id} className="text-sm text-forest-800">
-                        {m.user.fullName} <span className="text-slate-600">— {m.user.role}</span>
+                    {(t.members || []).map((m) => (
+                      <li key={m.user?.id || m.id} className="text-sm text-forest-800">
+                        {m.user?.fullName || m.fullName}{" "}
+                        <span className="text-slate-600">
+                          — {m.user?.role || m.role}
+                        </span>
                       </li>
                     ))}
-                    {t.members.length === 0 && <li className="text-sm text-slate-600">No members yet.</li>}
+                    {(!t.members || t.members.length === 0) && (
+                      <li className="text-sm text-slate-600">
+                        No members yet.
+                      </li>
+                    )}
                   </ul>
                 </div>
               ))}
-              {teams.length === 0 && <p className="text-slate-600">No teams yet.</p>}
+              {teams.length === 0 && (
+                <p className="text-slate-600">No teams yet.</p>
+              )}
             </div>
           </main>
         </div>

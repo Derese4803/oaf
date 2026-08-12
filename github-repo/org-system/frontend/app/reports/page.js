@@ -7,8 +7,6 @@ import Navbar from "@/components/Navbar";
 import { api } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 
-export const dynamic = 'force-dynamic';
-
 const STATUS_STYLES = {
   SUBMITTED: "bg-amber-500/15 text-amber-600",
   APPROVED: "bg-forest-700/10 text-forest-700",
@@ -20,14 +18,30 @@ export default function ReportsPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
-  const { user } = getSession();
-  const canReview = ["SUPERVISOR", "FIELD_MANAGER", "MANAGER", "SUPER_ADMIN"].includes(user?.role);
+  const [user, setUser] = useState(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   function load() {
     api.getReports().then(setReports).catch((e) => setError(e.message));
   }
 
-  useEffect(load, []);
+  useEffect(() => {
+    setIsMounted(true);
+    const session = getSession();
+    if (session?.user) {
+      setUser(session.user);
+    }
+    load();
+  }, []);
+
+  // Return empty shell during SSR / static prerendering to prevent stack overflows
+  if (!isMounted) {
+    return null;
+  }
+
+  const canReview = ["SUPERVISOR", "FIELD_MANAGER", "MANAGER", "SUPER_ADMIN"].includes(
+    user?.role
+  );
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -61,8 +75,13 @@ export default function ReportsPage() {
             {error && <p className="text-red-700 mb-4">{error}</p>}
 
             {user?.role === "ENUMERATOR" && (
-              <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-forest-800/10 p-5 mb-6 max-w-xl">
-                <h2 className="font-display text-lg text-forest-950 mb-3">Submit a report</h2>
+              <form
+                onSubmit={handleSubmit}
+                className="bg-white rounded-xl border border-forest-800/10 p-5 mb-6 max-w-xl"
+              >
+                <h2 className="font-display text-lg text-forest-950 mb-3">
+                  Submit a report
+                </h2>
                 <input
                   className="w-full mb-3 px-3 py-2 rounded-md border border-forest-800/20 focus-ring"
                   placeholder="Report title"
@@ -85,16 +104,29 @@ export default function ReportsPage() {
 
             <div className="space-y-3">
               {reports.map((r) => (
-                <div key={r.id} className="bg-white rounded-xl border border-forest-800/10 p-5 flex justify-between items-start">
+                <div
+                  key={r.id}
+                  className="bg-white rounded-xl border border-forest-800/10 p-5 flex justify-between items-start"
+                >
                   <div>
-                    <h3 className="font-display text-base text-forest-950">{r.title}</h3>
-                    {r.description && <p className="text-sm text-slate-600 mt-1">{r.description}</p>}
+                    <h3 className="font-display text-base text-forest-950">
+                      {r.title}
+                    </h3>
+                    {r.description && (
+                      <p className="text-sm text-slate-600 mt-1">
+                        {r.description}
+                      </p>
+                    )}
                     <p className="text-xs text-slate-600 mt-2">
                       By {r.submitter?.fullName} · {r.team?.name || "No team"}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_STYLES[r.status]}`}>
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full font-medium ${
+                        STATUS_STYLES[r.status]
+                      }`}
+                    >
                       {r.status}
                     </span>
                     {canReview && r.status === "SUBMITTED" && (
@@ -116,7 +148,9 @@ export default function ReportsPage() {
                   </div>
                 </div>
               ))}
-              {reports.length === 0 && <p className="text-slate-600">No reports yet.</p>}
+              {reports.length === 0 && (
+                <p className="text-slate-600">No reports yet.</p>
+              )}
             </div>
           </main>
         </div>
