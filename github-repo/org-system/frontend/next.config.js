@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  experimental: {
+    turbo: {
+      root: __dirname,
+    },
+  },
   async rewrites() {
     return [
       {
@@ -10,4 +15,5 @@ const nextConfig = {
     ];
   },
 };
+
 module.exports = nextConfig;
