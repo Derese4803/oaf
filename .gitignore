@@ -1,0 +1,3 @@
+node_modules
+cd github-repo/org-system/backend
+node src/seed.js   # or check your package.json scripts for the exact seed command
