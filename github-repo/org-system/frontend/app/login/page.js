@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { saveSession } from "../../lib/auth";
+import { saveSession } from "@/lib/auth"; // Path alias ensures clean builds on Vercel
 
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("admin");
-  const [role, setRole] = useState("ADMIN");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -17,22 +17,49 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const activeUser = username.trim() || "admin";
+      const activeUser = username.trim();
+      if (!activeUser) {
+        throw new Error("Please enter a username");
+      }
 
-      const mockUser = {
-        id: `dev-${role.toLowerCase()}-1`,
-        username: activeUser,
-        name: activeUser.toUpperCase(),
-        role: role,
-      };
+      // Ensure NEXT_PUBLIC_API_URL is configured in Vercel environment settings
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (!apiUrl) {
+        throw new Error("API URL is not configured. Set NEXT_PUBLIC_API_URL in environment settings.");
+      }
 
-      // Save session token to local storage
-      saveSession("dev-bypass-token-12345", mockUser);
+      const res = await fetch(`${apiUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: activeUser,
+          password: password || undefined,
+        }),
+      });
 
-      // Redirect to main dashboard
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Authentication failed");
+      }
+
+      // First-time passcode setup routing
+      if (data.requiresPasscodeSetup) {
+        localStorage.setItem("pendingUser", JSON.stringify(data.user));
+        router.push("/dashboard?setupPasscode=true");
+        return;
+      }
+
+      // Save active session token and user profile
+      saveSession(data.token, data.user);
       router.push("/dashboard");
     } catch (err) {
-      setError(err.message || "Login failed");
+      // Handles network errors (e.g., Render free-tier cold starts)
+      if (err.name === "TypeError" && err.message.includes("fetch")) {
+        setError("Unable to connect to the backend server. If using Render free tier, please allow up to 50 seconds for spin-up and try again.");
+      } else {
+        setError(err.message || "Sign in failed. Check API connectivity.");
+      }
     } finally {
       setLoading(false);
     }
@@ -57,7 +84,7 @@ export default function LoginPage() {
             and correspondence, tracked in one place.
           </p>
         </div>
-        <p className="text-xs text-wheat-200/40">v1.0 — Phase 1 MVP (Dev Bypass Active)</p>
+        <p className="text-xs text-wheat-200/40">v1.0 — Production Mode</p>
       </div>
 
       {/* Right Form Container */}
@@ -67,11 +94,11 @@ export default function LoginPage() {
             Sign in
           </h1>
           <p className="text-slate-600 text-sm mb-6">
-            Dev Mode: Password check disabled. Select role and hit sign in.
+            Enter your username. Passcode is optional for first-time accounts.
           </p>
 
           {error && (
-            <div className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+            <div className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2 leading-relaxed">
               {error}
             </div>
           )}
@@ -86,24 +113,22 @@ export default function LoginPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="admin"
+              required
               autoFocus
             />
           </div>
 
           <div className="mb-6">
             <label className="block text-sm font-medium text-forest-800 mb-1">
-              Select Dev Role
+              Passcode <span className="text-xs text-slate-500 font-normal">(Leave blank if first time)</span>
             </label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
+            <input
+              type="password"
               className="w-full px-3 py-2 rounded-md border border-forest-800/20 bg-white focus:outline-none focus:ring-2 focus:ring-forest-800"
-            >
-              <option value="ADMIN">Admin</option>
-              <option value="MANAGER">Manager</option>
-              <option value="FIELD_MANAGER">Field Manager</option>
-              <option value="ENUMERATOR">Enumerator</option>
-            </select>
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+            />
           </div>
 
           <button
@@ -115,7 +140,7 @@ export default function LoginPage() {
           </button>
 
           <p className="text-xs text-slate-500 mt-6 text-center">
-            Development mode active. Authenticates client-side directly.
+            Connected to Render API Database.
           </p>
         </form>
       </div>
