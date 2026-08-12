@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import ProtectedRoute from "../../components/ProtectedRoute";
-import Sidebar from "../../components/Sidebar";
-import Navbar from "../../components/Navbar";
-import { api } from "../../lib/api";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import Sidebar from "@/components/Sidebar";
+import Navbar from "@/components/Navbar";
+import { api } from "@/lib/api";
 
 const STATUS_FLOW = ["DRAFT", "PENDING_APPROVAL", "APPROVED", "SIGNED", "SENT", "ARCHIVED"];
 

@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import ProtectedRoute from "../../components/ProtectedRoute";
-import Sidebar from "../../components/Sidebar";
-import Navbar from "../../components/Navbar";
-import { api } from "../../lib/api";
-import { getSession } from "../../lib/auth";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import Sidebar from "@/components/Sidebar";
+import Navbar from "@/components/Navbar";
+import { api } from "@/lib/api";
+import { getSession } from "@/lib/auth";
 
 export default function DepartmentsPage() {
   const [departments, setDepartments] = useState([]);

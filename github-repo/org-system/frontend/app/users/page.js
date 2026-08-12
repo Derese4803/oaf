@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import ProtectedRoute from "../../components/ProtectedRoute";
-import Sidebar from "../../components/Sidebar";
-import Navbar from "../../components/Navbar";
-import { api } from "../../lib/api";
-import { ROLE_LABELS } from "../../lib/auth";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import Sidebar from "@/components/Sidebar";
+import Navbar from "@/components/Navbar";
+import { api } from "@/lib/api";
+import { ROLE_LABELS } from "@/lib/auth";
 
 const ROLES = Object.keys(ROLE_LABELS);
 

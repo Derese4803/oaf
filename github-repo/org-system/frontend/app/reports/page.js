@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import ProtectedRoute from "../../components/ProtectedRoute";
-import Sidebar from "../../components/Sidebar";
-import Navbar from "../../components/Navbar";
-import { api } from "../../lib/api";
-import { getSession } from "../../lib/auth";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import Sidebar from "@/components/Sidebar";
+import Navbar from "@/components/Navbar";
+import { api } from "@/lib/api";
+import { getSession } from "@/lib/auth";
 
 const STATUS_STYLES = {
   SUBMITTED: "bg-amber-500/15 text-amber-600",
