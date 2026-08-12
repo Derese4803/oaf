@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { getSession, ROLE_LABELS } from "../lib/auth";
+import { getSession, ROLE_LABELS } from "@/lib/auth";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", tag: "01" },

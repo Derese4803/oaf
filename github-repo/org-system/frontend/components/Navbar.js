@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "../lib/api";
-import { clearSession } from "../lib/auth";
+import { api } from "@/lib/api";
+import { clearSession } from "@/lib/auth";
 
 export default function Navbar({ title }) {
   const router = useRouter();
