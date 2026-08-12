@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import ProtectedRoute from "../../components/ProtectedRoute";
-import Sidebar from "../../components/Sidebar";
-import Navbar from "../../components/Navbar";
-import StatCard from "../../components/StatCard";
-import { api } from "../../lib/api";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import Sidebar from "@/components/Sidebar";
+import Navbar from "@/components/Navbar";
+import StatCard from "@/components/StatCard";
+import { api } from "@/lib/api";
 import {
   BarChart,
   Bar,
