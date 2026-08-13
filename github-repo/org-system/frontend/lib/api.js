@@ -152,6 +152,8 @@ export const api = {
   createReport: (payload) => request("/reports", { method: "POST", body: payload }, { id: String(Date.now()), ...payload }),
   reviewReport: (id, status, reviewNote) => request(`/reports/${id}/review`, { method: "PATCH", body: { status, reviewNote } }, { id, status, reviewNote }),
 
+  // Attendance endpoints (including getAttendance fix)
+  getAttendance: () => request("/attendance/today", {}, MOCK_DATA.attendance.today),
   getTodayAttendance: () => request("/attendance/today", {}, MOCK_DATA.attendance.today),
   getAttendanceHistory: (userId) => request(`/attendance/history${userId ? `?userId=${userId}` : ""}`, {}, MOCK_DATA.attendance.history),
   logAttendanceEvent: (event) => request("/attendance/event", { method: "POST", body: { event } }, { success: true }),
