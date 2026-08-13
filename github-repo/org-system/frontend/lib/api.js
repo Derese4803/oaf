@@ -1,4 +1,10 @@
-const API_BASE = ""; // rewrites proxy /api/* to the backend in dev
+// Dynamically resolve API URL from Vercel env or fallback for local rewrites
+const getBaseUrl = () => {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL || "";
+  return envUrl.replace(/\/+$/, ""); // Remove trailing slash if present
+};
+
+const API_BASE = getBaseUrl();
 
 // Comprehensive Mock fallback data for offline/demo mode
 const MOCK_DATA = {
@@ -91,8 +97,16 @@ async function request(path, { method = "GET", body, auth = true } = {}, fallbac
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
+  // Handle path construction safely regardless of whether API_BASE includes /api
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  const targetUrl = API_BASE
+    ? API_BASE.endsWith("/api")
+      ? `${API_BASE}${cleanPath}`
+      : `${API_BASE}/api${cleanPath}`
+    : `/api${cleanPath}`;
+
   try {
-    const res = await fetch(`${API_BASE}/api${path}`, {
+    const res = await fetch(targetUrl, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
@@ -104,7 +118,7 @@ async function request(path, { method = "GET", body, auth = true } = {}, fallbac
     }
     return data;
   } catch (err) {
-    console.warn(`[API Offline Mode] Request to /api${path} failed. Returning fallback mock data.`, err.message);
+    console.warn(`[API Offline Mode] Request to ${targetUrl} failed. Returning fallback mock data.`, err.message);
     if (fallbackValue !== null) {
       return fallbackValue;
     }
