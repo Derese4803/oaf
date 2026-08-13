@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { saveSession } from "@/lib/auth"; // Path alias ensures clean builds on Vercel
+import { saveSession } from "@/lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,25 +22,45 @@ export default function LoginPage() {
         throw new Error("Please enter a username");
       }
 
-      // Ensure NEXT_PUBLIC_API_URL is configured in Vercel environment settings
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      if (!apiUrl) {
+      // 1. Sanitize base API URL (removes trailing slashes)
+      let baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
+      if (!baseUrl) {
         throw new Error("API URL is not configured. Set NEXT_PUBLIC_API_URL in environment settings.");
       }
 
-      const res = await fetch(`${apiUrl}/api/auth/login`, {
+      // 2. Prevent path duplication if NEXT_PUBLIC_API_URL already contains /api
+      const endpoint = baseUrl.endsWith("/api")
+        ? `${baseUrl}/auth/login`
+        : `${baseUrl}/api/auth/login`;
+
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: activeUser,
           password: password || undefined,
+          passcode: password || undefined, // Send both to match backend schema key
         }),
       });
+
+      // 3. Inspect Content-Type before parsing JSON
+      const contentType = res.headers.get("content-type");
+      const isJson = contentType && contentType.includes("application/json");
+
+      if (!isJson) {
+        if (res.status === 404) {
+          throw new Error(`Endpoint not found (404) at: ${endpoint}. Check backend routes.`);
+        }
+        if (res.status >= 500) {
+          throw new Error("Render server is currently spinning up or down. Please wait 30 seconds and try again.");
+        }
+        throw new Error(`Server returned non-JSON response (${res.status}).`);
+      }
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Authentication failed");
+        throw new Error(data.error || data.message || "Authentication failed");
       }
 
       // First-time passcode setup routing
@@ -54,9 +74,8 @@ export default function LoginPage() {
       saveSession(data.token, data.user);
       router.push("/dashboard");
     } catch (err) {
-      // Handles network errors (e.g., Render free-tier cold starts)
       if (err.name === "TypeError" && err.message.includes("fetch")) {
-        setError("Unable to connect to the backend server. If using Render free tier, please allow up to 50 seconds for spin-up and try again.");
+        setError("Unable to reach backend server. Allow 30–50 seconds for Render free instance to spin up.");
       } else {
         setError(err.message || "Sign in failed. Check API connectivity.");
       }
@@ -109,6 +128,8 @@ export default function LoginPage() {
             </label>
             <input
               type="text"
+              name="username"
+              autoComplete="username"
               className="w-full px-3 py-2 rounded-md border border-forest-800/20 bg-white focus:outline-none focus:ring-2 focus:ring-forest-800"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -124,6 +145,8 @@ export default function LoginPage() {
             </label>
             <input
               type="password"
+              name="password"
+              autoComplete="current-password"
               className="w-full px-3 py-2 rounded-md border border-forest-800/20 bg-white focus:outline-none focus:ring-2 focus:ring-forest-800"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
