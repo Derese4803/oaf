@@ -35,27 +35,39 @@ function DashboardContent() {
       setShowPasscodeModal(true);
     }
 
-    // 2. Fetch data ONCE on mount
+    // 2. Fetch data with Promise.allSettled so failures aren't silently swallowed
     let isMounted = true;
 
     async function loadData() {
       try {
-        const [users, departments, teams, letters, attendance] = await Promise.all([
-          api.getUsers().catch(() => []),
-          api.getDepartments().catch(() => []),
-          api.getTeams().catch(() => []),
-          api.getLetters().catch(() => []),
-          api.getAttendance().catch(() => []),
+        const results = await Promise.allSettled([
+          api.getUsers(),
+          api.getDepartments(),
+          api.getTeams(),
+          api.getLetters(),
+          api.getAttendance(),
         ]);
 
+        const [usersRes, deptsRes, teamsRes, lettersRes, attendanceRes] = results;
+
         if (isMounted) {
+          // Show error banner if any API route failed
+          const failures = results.filter((r) => r.status === "rejected");
+          if (failures.length > 0) {
+            setError("Some dashboard data failed to load. Check API server connection.");
+          } else {
+            setError("");
+          }
+
           setStats({
-            usersCount: users?.length || 0,
-            departmentsCount: departments?.length || 0,
-            teamsCount: teams?.length || 0,
-            lettersCount: letters?.length || 0,
+            usersCount: usersRes.status === "fulfilled" ? usersRes.value?.length || 0 : 0,
+            departmentsCount: deptsRes.status === "fulfilled" ? deptsRes.value?.length || 0 : 0,
+            teamsCount: teamsRes.status === "fulfilled" ? teamsRes.value?.length || 0 : 0,
+            lettersCount: lettersRes.status === "fulfilled" ? lettersRes.value?.length || 0 : 0,
           });
-          setRecentAttendance((attendance || []).slice(0, 5));
+
+          const attendanceData = attendanceRes.status === "fulfilled" ? attendanceRes.value : [];
+          setRecentAttendance((attendanceData || []).slice(0, 5));
           setLoading(false);
         }
       } catch (e) {
@@ -133,7 +145,11 @@ function DashboardContent() {
       <div className="flex-1">
         <Navbar title="Dashboard Overview" />
         <main className="p-8">
-          {error && <p className="text-red-700 mb-4 bg-red-50 p-3 rounded-md border border-red-200">{error}</p>}
+          {error && (
+            <p className="text-red-700 mb-4 bg-red-50 p-3 rounded-md border border-red-200">
+              {error}
+            </p>
+          )}
 
           {/* Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
