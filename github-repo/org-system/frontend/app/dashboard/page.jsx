@@ -47,12 +47,12 @@ function DashboardContent() {
 
         if (isMounted) {
           setStats({
-            usersCount: users?.length || 0,
-            departmentsCount: departments?.length || 0,
-            teamsCount: teams?.length || 0,
-            lettersCount: letters?.length || 0,
+            usersCount: Array.isArray(users) ? users.length : 0,
+            departmentsCount: Array.isArray(departments) ? departments.length : 0,
+            teamsCount: Array.isArray(teams) ? teams.length : 0,
+            lettersCount: Array.isArray(letters) ? letters.length : 0,
           });
-          setRecentAttendance((attendance || []).slice(0, 5));
+          setRecentAttendance(Array.isArray(attendance) ? attendance.slice(0, 5) : []);
           setLoading(false);
         }
       } catch (e) {
@@ -90,7 +90,7 @@ function DashboardContent() {
       const pendingUser = rawPending ? JSON.parse(rawPending) : session?.user;
 
       const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
-      const res = await fetch(`${baseUrl}/api/auth/set-passcode`, {
+      const res = await fetch(`${baseUrl}/auth/set-passcode`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -178,8 +178,8 @@ function DashboardContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentAttendance.map((log) => (
-                    <tr key={log.id || log._id} className="border-t border-forest-800/5">
+                  {recentAttendance.map((log, index) => (
+                    <tr key={log.id || log._id || index} className="border-t border-forest-800/5">
                       <td className="px-4 py-2.5 text-forest-950 font-medium">
                         {log.user?.fullName || log.username || "—"}
                       </td>
