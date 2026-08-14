@@ -21,6 +21,7 @@ function DashboardContent() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // Passcode Setup Modal State
   const [showPasscodeModal, setShowPasscodeModal] = useState(false);
   const [newPasscode, setNewPasscode] = useState("");
   const [confirmPasscode, setConfirmPasscode] = useState("");
@@ -28,31 +29,45 @@ function DashboardContent() {
   const [passcodeSubmitting, setPasscodeSubmitting] = useState(false);
 
   useEffect(() => {
+    // 1. Check for passcode setup query param
     const isPasscodeSetup = searchParams.get("setupPasscode") === "true";
     if (isPasscodeSetup) {
       setShowPasscodeModal(true);
     }
 
+    // 2. Fetch data with Promise.allSettled so failures aren't silently swallowed
     let isMounted = true;
 
     async function loadData() {
       try {
-        const [users, departments, teams, letters, attendance] = await Promise.all([
-          api.getUsers().catch(() => []),
-          api.getDepartments().catch(() => []),
-          api.getTeams().catch(() => []),
-          api.getLetters().catch(() => []),
-          api.getAttendance().catch(() => []),
+        const results = await Promise.allSettled([
+          api.getUsers(),
+          api.getDepartments(),
+          api.getTeams(),
+          api.getLetters(),
+          api.getAttendance(),
         ]);
 
+        const [usersRes, deptsRes, teamsRes, lettersRes, attendanceRes] = results;
+
         if (isMounted) {
+          // Show error banner if any API route failed
+          const failures = results.filter((r) => r.status === "rejected");
+          if (failures.length > 0) {
+            setError("Some dashboard data failed to load. Check API server connection.");
+          } else {
+            setError("");
+          }
+
           setStats({
-            usersCount: Array.isArray(users) ? users.length : 0,
-            departmentsCount: Array.isArray(departments) ? departments.length : 0,
-            teamsCount: Array.isArray(teams) ? teams.length : 0,
-            lettersCount: Array.isArray(letters) ? letters.length : 0,
+            usersCount: usersRes.status === "fulfilled" ? usersRes.value?.length || 0 : 0,
+            departmentsCount: deptsRes.status === "fulfilled" ? deptsRes.value?.length || 0 : 0,
+            teamsCount: teamsRes.status === "fulfilled" ? teamsRes.value?.length || 0 : 0,
+            lettersCount: lettersRes.status === "fulfilled" ? lettersRes.value?.length || 0 : 0,
           });
-          setRecentAttendance(Array.isArray(attendance) ? attendance.slice(0, 5) : []);
+
+          const attendanceData = attendanceRes.status === "fulfilled" ? attendanceRes.value : [];
+          setRecentAttendance((attendanceData || []).slice(0, 5));
           setLoading(false);
         }
       } catch (e) {
@@ -86,11 +101,11 @@ function DashboardContent() {
     setPasscodeSubmitting(true);
     try {
       const session = getSession();
-      const rawPending = typeof window !== "undefined" ? localStorage.getItem("pendingUser") : null;
+      const rawPending = localStorage.getItem("pendingUser");
       const pendingUser = rawPending ? JSON.parse(rawPending) : session?.user;
 
       const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
-      const res = await fetch(`${baseUrl}/auth/set-passcode`, {
+      const res = await fetch(`${baseUrl}/api/auth/set-passcode`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -108,14 +123,14 @@ function DashboardContent() {
         throw new Error(data.message || data.error || "Failed to set passcode");
       }
 
+      // Update session & clean up
       if (data.token) {
         saveSession(data.token, data.user || pendingUser);
       }
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("pendingUser");
-      }
+      localStorage.removeItem("pendingUser");
       setShowPasscodeModal(false);
 
+      // Clean query params from URL without page reload
       router.replace("/dashboard");
     } catch (err) {
       setPasscodeError(err.message);
@@ -124,39 +139,39 @@ function DashboardContent() {
     }
   }
 
-  function handleDismissModal() {
-    setShowPasscodeModal(false);
-    router.replace("/dashboard");
-  }
-
   return (
     <div className="flex min-h-screen bg-wheat-50">
       <Sidebar />
       <div className="flex-1">
         <Navbar title="Dashboard Overview" />
         <main className="p-8">
-          {error && <p className="text-red-700 mb-4 bg-red-50 p-3 rounded-md border border-red-200">{error}</p>}
+          {error && (
+            <p className="text-red-700 mb-4 bg-red-50 p-3 rounded-md border border-red-200">
+              {error}
+            </p>
+          )}
 
+          {/* Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white rounded-xl border border-forest-800/10 p-5 shadow-sm">
+            <div className="bg-white rounded-xl border border-forest-800/10 p-5">
               <p className="text-xs font-medium uppercase text-slate-500">Total Staff</p>
               <p className="font-display text-2xl text-forest-950 mt-1 font-semibold">
                 {loading ? "..." : stats.usersCount}
               </p>
             </div>
-            <div className="bg-white rounded-xl border border-forest-800/10 p-5 shadow-sm">
+            <div className="bg-white rounded-xl border border-forest-800/10 p-5">
               <p className="text-xs font-medium uppercase text-slate-500">Departments</p>
               <p className="font-display text-2xl text-forest-950 mt-1 font-semibold">
                 {loading ? "..." : stats.departmentsCount}
               </p>
             </div>
-            <div className="bg-white rounded-xl border border-forest-800/10 p-5 shadow-sm">
+            <div className="bg-white rounded-xl border border-forest-800/10 p-5">
               <p className="text-xs font-medium uppercase text-slate-500">Active Teams</p>
               <p className="font-display text-2xl text-forest-950 mt-1 font-semibold">
                 {loading ? "..." : stats.teamsCount}
               </p>
             </div>
-            <div className="bg-white rounded-xl border border-forest-800/10 p-5 shadow-sm">
+            <div className="bg-white rounded-xl border border-forest-800/10 p-5">
               <p className="text-xs font-medium uppercase text-slate-500">Documents Issued</p>
               <p className="font-display text-2xl text-forest-950 mt-1 font-semibold">
                 {loading ? "..." : stats.lettersCount}
@@ -164,7 +179,8 @@ function DashboardContent() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-forest-800/10 p-5 shadow-sm">
+          {/* Recent Activity Table */}
+          <div className="bg-white rounded-xl border border-forest-800/10 p-5">
             <h2 className="font-display text-base font-semibold text-forest-950 mb-4">
               Recent Attendance Activity
             </h2>
@@ -178,8 +194,8 @@ function DashboardContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentAttendance.map((log, index) => (
-                    <tr key={log.id || log._id || index} className="border-t border-forest-800/5">
+                  {recentAttendance.map((log) => (
+                    <tr key={log.id || log._id} className="border-t border-forest-800/5">
                       <td className="px-4 py-2.5 text-forest-950 font-medium">
                         {log.user?.fullName || log.username || "—"}
                       </td>
@@ -205,20 +221,13 @@ function DashboardContent() {
         </main>
       </div>
 
+      {/* First-Time Passcode Modal */}
       {showPasscodeModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl border border-slate-100">
-            <div className="flex justify-between items-start mb-2">
-              <h2 className="font-display text-2xl font-bold text-forest-950">
-                Set Up Your Passcode
-              </h2>
-              <button
-                onClick={handleDismissModal}
-                className="text-slate-400 hover:text-slate-600 text-sm font-semibold"
-              >
-                ✕
-              </button>
-            </div>
+            <h2 className="font-display text-2xl font-bold text-forest-950 mb-1">
+              Set Up Your Passcode
+            </h2>
             <p className="text-sm text-slate-600 mb-6">
               Welcome! Since this is your first sign-in, please create a secure passcode for future logins.
             </p>
@@ -258,22 +267,13 @@ function DashboardContent() {
                 />
               </div>
 
-              <div className="pt-2 flex flex-col gap-2">
-                <button
-                  type="submit"
-                  disabled={passcodeSubmitting}
-                  className="w-full bg-forest-800 text-white py-2.5 rounded-md hover:bg-forest-700 transition-colors text-sm font-medium disabled:opacity-50"
-                >
-                  {passcodeSubmitting ? "Saving Passcode…" : "Save Passcode & Continue"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDismissModal}
-                  className="w-full text-slate-500 hover:text-slate-700 py-1.5 text-xs text-center"
-                >
-                  Skip for now
-                </button>
-              </div>
+              <button
+                type="submit"
+                disabled={passcodeSubmitting}
+                className="w-full bg-forest-800 text-wheat-50 py-2.5 rounded-md hover:bg-forest-700 transition-colors text-sm font-medium disabled:opacity-50 mt-2"
+              >
+                {passcodeSubmitting ? "Saving Passcode…" : "Save Passcode & Continue"}
+              </button>
             </form>
           </div>
         </div>
