@@ -2,8 +2,8 @@
 
 export function saveSession(token, user) {
   if (typeof window !== "undefined") {
-    localStorage.setItem("token", token);
-    localStorage.setItem("user", JSON.stringify(user));
+    if (token) localStorage.setItem("token", token);
+    if (user) localStorage.setItem("user", JSON.stringify(user));
   }
 }
 
@@ -12,8 +12,12 @@ export function getSession() {
   try {
     const token = localStorage.getItem("token");
     const userRaw = localStorage.getItem("user");
-    return { token, user: userRaw ? JSON.parse(userRaw) : null };
+    return {
+      token: token || null,
+      user: userRaw ? JSON.parse(userRaw) : null,
+    };
   } catch (error) {
+    console.error("Error reading session:", error);
     return { token: null, user: null };
   }
 }

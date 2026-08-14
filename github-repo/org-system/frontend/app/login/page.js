@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { saveSession } from "@/lib/auth";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -63,16 +61,19 @@ export default function LoginPage() {
         throw new Error(data.error || data.message || "Authentication failed");
       }
 
+      // Save active session token and user profile
+      saveSession(data.token, data.user);
+
       // First-time passcode setup routing
       if (data.requiresPasscodeSetup) {
         localStorage.setItem("pendingUser", JSON.stringify(data.user));
-        router.push("/dashboard?setupPasscode=true");
+        // Hard redirect to avoid unhydrated React state
+        window.location.href = "/dashboard?setupPasscode=true";
         return;
       }
 
-      // Save active session token and user profile
-      saveSession(data.token, data.user);
-      router.push("/dashboard");
+      // Regular Login: Hard redirect into dashboard
+      window.location.href = "/dashboard";
     } catch (err) {
       if (err.name === "TypeError" && err.message.includes("fetch")) {
         setError("Unable to reach backend server. Allow 30–50 seconds for Render free instance to spin up.");
