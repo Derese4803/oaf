@@ -15,38 +15,36 @@ export default function DashboardPage() {
   });
   const [recentAttendance, setRecentAttendance] = useState([]);
   const [error, setError] = useState("");
-  const [isMounted, setIsMounted] = useState(false);
-
-  function load() {
-    // Fetch overview statistics and recent logs
-    Promise.all([
-      api.getUsers().catch(() => []),
-      api.getDepartments().catch(() => []),
-      api.getTeams().catch(() => []),
-      api.getLetters().catch(() => []),
-      api.getAttendance().catch(() => []),
-    ])
-      .then(([users, departments, teams, letters, attendance]) => {
-        setStats({
-          usersCount: users?.length || 0,
-          departmentsCount: departments?.length || 0,
-          teamsCount: teams?.length || 0,
-          lettersCount: letters?.length || 0,
-        });
-        setRecentAttendance((attendance || []).slice(0, 5));
-      })
-      .catch((e) => setError(e.message));
-  }
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setIsMounted(true);
-    load();
-  }, []);
+    async function loadData() {
+      try {
+        const [users, departments, teams, letters, attendance] = await Promise.all([
+          api.getUsers().catch(() => []),
+          api.getDepartments().catch(() => []),
+          api.getTeams().catch(() => []),
+          api.getLetters().catch(() => []),
+          api.getAttendance().catch(() => []),
+        ]);
 
-  // Guard against hydration errors during Next.js static export / SSR
-  if (!isMounted) {
-    return null;
-  }
+        setStats({
+          usersCount: Array.isArray(users) ? users.length : 0,
+          departmentsCount: Array.isArray(departments) ? departments.length : 0,
+          teamsCount: Array.isArray(teams) ? teams.length : 0,
+          lettersCount: Array.isArray(letters) ? letters.length : 0,
+        });
+
+        setRecentAttendance(Array.isArray(attendance) ? attendance.slice(0, 5) : []);
+      } catch (e) {
+        setError(e.message || "Failed to load dashboard data.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
+  }, []);
 
   return (
     <ProtectedRoute>
@@ -64,7 +62,7 @@ export default function DashboardPage() {
                   Total Staff
                 </p>
                 <p className="font-display text-2xl text-forest-950 mt-1 font-semibold">
-                  {stats.usersCount}
+                  {loading ? "..." : stats.usersCount}
                 </p>
               </div>
               <div className="bg-white rounded-xl border border-forest-800/10 p-5">
@@ -72,7 +70,7 @@ export default function DashboardPage() {
                   Departments
                 </p>
                 <p className="font-display text-2xl text-forest-950 mt-1 font-semibold">
-                  {stats.departmentsCount}
+                  {loading ? "..." : stats.departmentsCount}
                 </p>
               </div>
               <div className="bg-white rounded-xl border border-forest-800/10 p-5">
@@ -80,7 +78,7 @@ export default function DashboardPage() {
                   Active Teams
                 </p>
                 <p className="font-display text-2xl text-forest-950 mt-1 font-semibold">
-                  {stats.teamsCount}
+                  {loading ? "..." : stats.teamsCount}
                 </p>
               </div>
               <div className="bg-white rounded-xl border border-forest-800/10 p-5">
@@ -88,7 +86,7 @@ export default function DashboardPage() {
                   Documents Issued
                 </p>
                 <p className="font-display text-2xl text-forest-950 mt-1 font-semibold">
-                  {stats.lettersCount}
+                  {loading ? "..." : stats.lettersCount}
                 </p>
               </div>
             </div>
@@ -108,14 +106,14 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {recentAttendance.map((log) => (
-                      <tr key={log.id} className="border-t border-forest-800/5">
+                    {recentAttendance.map((log, index) => (
+                      <tr key={log.id || index} className="border-t border-forest-800/5">
                         <td className="px-4 py-2.5 text-forest-950 font-medium">
                           {log.user?.fullName || "—"}
                         </td>
                         <td className="px-4 py-2.5">
                           <span className="text-xs px-2 py-0.5 rounded font-medium bg-forest-700/10 text-forest-700">
-                            {log.status}
+                            {log.status || "N/A"}
                           </span>
                         </td>
                         <td className="px-4 py-2.5 text-slate-500 text-xs">
@@ -127,7 +125,7 @@ export default function DashboardPage() {
                     ))}
                   </tbody>
                 </table>
-                {recentAttendance.length === 0 && (
+                {!loading && recentAttendance.length === 0 && (
                   <p className="text-sm text-slate-500 mt-2">
                     No recent attendance recorded.
                   </p>
