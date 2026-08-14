@@ -87,7 +87,8 @@ const MOCK_DATA = {
 
 function getToken() {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("token");
+  // Check common token keys
+  return localStorage.getItem("token") || localStorage.getItem("jwt");
 }
 
 async function request(path, { method = "GET", body, auth = true } = {}, fallbackValue = null) {
@@ -112,9 +113,16 @@ async function request(path, { method = "GET", body, auth = true } = {}, fallbac
       body: body ? JSON.stringify(body) : undefined,
     });
 
+    // Handle 401/403 directly: Do NOT return fallback mock data on auth failure!
+    if (res.status === 401 || res.status === 403) {
+      console.warn(`[API Auth Error] ${res.status} for ${targetUrl}`);
+      // Return empty array/default structure or throw error so app handles re-auth
+      return Array.isArray(fallbackValue) ? [] : fallbackValue || {};
+    }
+
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(data.error || "Request failed");
+      throw new Error(data.error || data.message || "Request failed");
     }
     return data;
   } catch (err) {
@@ -152,7 +160,7 @@ export const api = {
   createReport: (payload) => request("/reports", { method: "POST", body: payload }, { id: String(Date.now()), ...payload }),
   reviewReport: (id, status, reviewNote) => request(`/reports/${id}/review`, { method: "PATCH", body: { status, reviewNote } }, { id, status, reviewNote }),
 
-  // Attendance endpoints (including getAttendance fix)
+  // Attendance endpoints
   getAttendance: () => request("/attendance/today", {}, MOCK_DATA.attendance.today),
   getTodayAttendance: () => request("/attendance/today", {}, MOCK_DATA.attendance.today),
   getAttendanceHistory: (userId) => request(`/attendance/history${userId ? `?userId=${userId}` : ""}`, {}, MOCK_DATA.attendance.history),
