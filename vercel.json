@@ -1,0 +1,5 @@
+{
+  "buildCommand": "cd github-repo/org-system/frontend && npm run build",
+  "outputDirectory": "github-repo/org-system/frontend/.next",
+  "installCommand": "cd github-repo/org-system/frontend && npm install"
+}
