@@ -11,6 +11,7 @@ import { getSession, saveSession } from "@/lib/auth";
 function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+
   const [stats, setStats] = useState({
     usersCount: 0,
     departmentsCount: 0,
@@ -21,21 +22,19 @@ function DashboardContent() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // Passcode Setup Modal State
   const [showPasscodeModal, setShowPasscodeModal] = useState(false);
   const [newPasscode, setNewPasscode] = useState("");
   const [confirmPasscode, setConfirmPasscode] = useState("");
   const [passcodeError, setPasscodeError] = useState("");
   const [passcodeSubmitting, setPasscodeSubmitting] = useState(false);
 
+  const setupPasscodeParam = searchParams.get("setupPasscode");
+
   useEffect(() => {
-    // 1. Check for passcode setup query param
-    const isPasscodeSetup = searchParams.get("setupPasscode") === "true";
-    if (isPasscodeSetup) {
+    if (setupPasscodeParam === "true") {
       setShowPasscodeModal(true);
     }
 
-    // 2. Fetch data with Promise.allSettled so failures aren't silently swallowed
     let isMounted = true;
 
     async function loadData() {
@@ -51,7 +50,6 @@ function DashboardContent() {
         const [usersRes, deptsRes, teamsRes, lettersRes, attendanceRes] = results;
 
         if (isMounted) {
-          // Show error banner if any API route failed
           const failures = results.filter((r) => r.status === "rejected");
           if (failures.length > 0) {
             setError("Some dashboard data failed to load. Check API server connection.");
@@ -60,19 +58,19 @@ function DashboardContent() {
           }
 
           setStats({
-            usersCount: usersRes.status === "fulfilled" ? usersRes.value?.length || 0 : 0,
-            departmentsCount: deptsRes.status === "fulfilled" ? deptsRes.value?.length || 0 : 0,
-            teamsCount: teamsRes.status === "fulfilled" ? teamsRes.value?.length || 0 : 0,
-            lettersCount: lettersRes.status === "fulfilled" ? lettersRes.value?.length || 0 : 0,
+            usersCount: usersRes.status === "fulfilled" && Array.isArray(usersRes.value) ? usersRes.value.length : 0,
+            departmentsCount: deptsRes.status === "fulfilled" && Array.isArray(deptsRes.value) ? deptsRes.value.length : 0,
+            teamsCount: teamsRes.status === "fulfilled" && Array.isArray(teamsRes.value) ? teamsRes.value.length : 0,
+            lettersCount: lettersRes.status === "fulfilled" && Array.isArray(lettersRes.value) ? lettersRes.value.length : 0,
           });
 
-          const attendanceData = attendanceRes.status === "fulfilled" ? attendanceRes.value : [];
-          setRecentAttendance((attendanceData || []).slice(0, 5));
+          const attendanceData = attendanceRes.status === "fulfilled" && Array.isArray(attendanceRes.value) ? attendanceRes.value : [];
+          setRecentAttendance(attendanceData.slice(0, 5));
           setLoading(false);
         }
       } catch (e) {
         if (isMounted) {
-          setError(e.message || "Failed to load dashboard statistics.");
+          setError(e?.message || "Failed to load dashboard statistics.");
           setLoading(false);
         }
       }
@@ -83,9 +81,9 @@ function DashboardContent() {
     return () => {
       isMounted = false;
     };
-  }, [searchParams]);
+  }, [setupPasscodeParam]);
 
-  async function handlePasscodeSubmit(e) {
+  const handlePasscodeSubmit = async (e) => {
     e.preventDefault();
     setPasscodeError("");
 
@@ -101,7 +99,7 @@ function DashboardContent() {
     setPasscodeSubmitting(true);
     try {
       const session = getSession();
-      const rawPending = localStorage.getItem("pendingUser");
+      const rawPending = typeof window !== "undefined" ? localStorage.getItem("pendingUser") : null;
       const pendingUser = rawPending ? JSON.parse(rawPending) : session?.user;
 
       const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
@@ -123,21 +121,21 @@ function DashboardContent() {
         throw new Error(data.message || data.error || "Failed to set passcode");
       }
 
-      // Update session & clean up
       if (data.token) {
         saveSession(data.token, data.user || pendingUser);
       }
-      localStorage.removeItem("pendingUser");
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("pendingUser");
+      }
       setShowPasscodeModal(false);
 
-      // Clean query params from URL without page reload
       router.replace("/dashboard");
     } catch (err) {
       setPasscodeError(err.message);
     } finally {
       setPasscodeSubmitting(false);
     }
-  }
+  };
 
   return (
     <div className="flex min-h-screen bg-wheat-50">
@@ -151,7 +149,6 @@ function DashboardContent() {
             </p>
           )}
 
-          {/* Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <div className="bg-white rounded-xl border border-forest-800/10 p-5">
               <p className="text-xs font-medium uppercase text-slate-500">Total Staff</p>
@@ -179,7 +176,6 @@ function DashboardContent() {
             </div>
           </div>
 
-          {/* Recent Activity Table */}
           <div className="bg-white rounded-xl border border-forest-800/10 p-5">
             <h2 className="font-display text-base font-semibold text-forest-950 mb-4">
               Recent Attendance Activity
@@ -221,7 +217,6 @@ function DashboardContent() {
         </main>
       </div>
 
-      {/* First-Time Passcode Modal */}
       {showPasscodeModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl border border-slate-100">
