@@ -1,4 +1,3 @@
-const serverless = require("serverless-http");
 const express = require("express");
 const cors = require("cors");
 
@@ -32,4 +31,4 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Something went wrong on the server" });
 });
 
-module.exports = serverless(app);
+module.exports = app;
